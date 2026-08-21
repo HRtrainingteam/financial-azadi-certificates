@@ -89,7 +89,7 @@ async function drawCertificate(data) {
 function fitText(ctx, text, maxWidth, fontSize) {
   let size = fontSize;
 
-  while (size > 52) {
+  while (size > 110) {
     ctx.font = `bold ${size}px Arial`;
     if (ctx.measureText(text).width <= maxWidth) break;
     size -= 2;
