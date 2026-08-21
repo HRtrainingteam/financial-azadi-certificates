@@ -71,26 +71,28 @@ async function drawCertificate(data) {
   canvas.height = template.naturalHeight;
   ctx.drawImage(template, 0, 0);
 
-  // Employee name: large, bold, centered and positioned close above the dotted line.
-  // Certificate template: 2000 x 1414 px. Dotted line is approximately y=830.
+  // Large employee name. The dotted decorative line in the supplied template
+  // is around y=830px, so the name baseline is placed just above it.
   const x = canvas.width / 2;
-  const y = 770;
-  const maxWidth = canvas.width * 0.84;
+  const y = 795;
+  const maxWidth = canvas.width * 0.82;
 
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillStyle = "#28469a";
+  ctx.font = "bold 180px Arial";
 
-  // Start at 110px so the name is clearly prominent.
-  fitText(ctx, data.name, maxWidth, 140);
+  // Keep the name genuinely large. Only reduce it when a very long name
+  // would exceed the available width.
+  fitText(ctx, data.name, maxWidth, 180);
   ctx.fillText(data.name, x, y);
 }
 
 function fitText(ctx, text, maxWidth, fontSize) {
   let size = fontSize;
 
-  while (size > 20) {
-    ctx.font = `bold ${size}px Montserrat`;
+  while (size > 70) {
+    ctx.font = `bold ${size}px Arial`;
     if (ctx.measureText(text).width <= maxWidth) break;
     size -= 2;
   }
