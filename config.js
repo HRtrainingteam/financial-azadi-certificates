@@ -1,2 +1,2 @@
-// After deploying Google Apps Script as a Web App, paste its /exec URL here.
-const APPS_SCRIPT_URL = "PASTE_YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE";
+// Google Apps Script Web App endpoint
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwDHqzrQNdvmSVxdyMuJ-RDFZoR9F3aan3CjMuWHRIdGZrnAWkBY_OFcS-zLFUXgtGk/exec";
