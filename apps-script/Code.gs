@@ -5,16 +5,15 @@
  * B = Name
  * C = Prize (optional)
  */
-const SPREADSHEET_ID = "PASTE_YOUR_GOOGLE_SHEET_ID_HERE";
+const SPREADSHEET_ID = "1zhz8NXUh2hPZegaj-kcQcYIvOg3QMbw6cmJZOlSIwdY";
 const SHEET_NAME = "Winners";
 
 function doGet(e) {
   const employeeCode = String(e?.parameter?.employeeCode || "").trim().toUpperCase();
   if (!employeeCode) return json({success:false,message:"Please enter your Employee Code."});
-  if (SPREADSHEET_ID.includes("PASTE_YOUR")) return json({success:false,message:"Database is not configured."});
 
   const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(SHEET_NAME);
-  if (!sheet) return json({success:false,message:"Winners sheet not found."});
+  if (!sheet) return json({success:false,message:"Winners sheet not found. Please create/rename the sheet tab to Winners."});
 
   const values = sheet.getDataRange().getValues();
   for (let i = 1; i < values.length; i++) {
