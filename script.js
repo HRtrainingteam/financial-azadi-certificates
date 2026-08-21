@@ -71,8 +71,8 @@ async function drawCertificate(data) {
   canvas.height = template.naturalHeight;
   ctx.drawImage(template, 0, 0);
 
-  // Large employee name. The dotted decorative line in the supplied template
-  // is around y=830px, so the name baseline is placed just above it.
+  // Montserrat is loaded by index.html. Use the same clean bold typeface
+  // for the employee name as the certificate's existing typography.
   const x = canvas.width / 2;
   const y = 795;
   const maxWidth = canvas.width * 0.82;
@@ -80,10 +80,8 @@ async function drawCertificate(data) {
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillStyle = "#28469a";
-  ctx.font = "bold 180px Arial";
+  ctx.font = "700 180px Montserrat, Arial, sans-serif";
 
-  // Keep the name genuinely large. Only reduce it when a very long name
-  // would exceed the available width.
   fitText(ctx, data.name, maxWidth, 180);
   ctx.fillText(data.name, x, y);
 }
@@ -92,7 +90,7 @@ function fitText(ctx, text, maxWidth, fontSize) {
   let size = fontSize;
 
   while (size > 70) {
-    ctx.font = `bold ${size}px Arial`;
+    ctx.font = `700 ${size}px Montserrat, Arial, sans-serif`;
     if (ctx.measureText(text).width <= maxWidth) break;
     size -= 2;
   }
