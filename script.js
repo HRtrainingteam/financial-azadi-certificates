@@ -82,15 +82,15 @@ async function drawCertificate(data) {
   ctx.fillStyle = "#28469a";
 
   // Start at 110px so the name is clearly prominent.
-  fitText(ctx, data.name, maxWidth, 110);
+  fitText(ctx, data.name, maxWidth, 140);
   ctx.fillText(data.name, x, y);
 }
 
 function fitText(ctx, text, maxWidth, fontSize) {
   let size = fontSize;
 
-  while (size > 110) {
-    ctx.font = `bold ${size}px Arial`;
+  while (size > 20) {
+    ctx.font = `bold ${size}px Montserrat`;
     if (ctx.measureText(text).width <= maxWidth) break;
     size -= 2;
   }
