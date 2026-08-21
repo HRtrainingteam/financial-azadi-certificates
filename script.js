@@ -66,31 +66,35 @@ function loadImage(image) {
 async function drawCertificate(data) {
   await loadImage(template);
 
+  // Wait for Montserrat to actually be available before measuring/drawing.
+  // This prevents the browser from falling back to Arial and changing the size.
+  await document.fonts.load("700 130px Montserrat");
+
   const ctx = canvas.getContext("2d");
   canvas.width = template.naturalWidth;
   canvas.height = template.naturalHeight;
   ctx.drawImage(template, 0, 0);
 
-  // Montserrat is loaded by index.html. Use the same clean bold typeface
-  // for the employee name as the certificate's existing typography.
+  // Name sits comfortably above the dotted divider without touching it.
   const x = canvas.width / 2;
-  const y = 795;
-  const maxWidth = canvas.width * 0.82;
+  const y = 735;
+  const maxWidth = canvas.width * 0.78;
+  const startingFontSize = 130;
 
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillStyle = "#28469a";
-  ctx.font = "700 180px Montserrat, Arial, sans-serif";
+  ctx.font = `700 ${startingFontSize}px Montserrat`;
 
-  fitText(ctx, data.name, maxWidth, 180);
+  fitText(ctx, data.name, maxWidth, startingFontSize);
   ctx.fillText(data.name, x, y);
 }
 
 function fitText(ctx, text, maxWidth, fontSize) {
   let size = fontSize;
 
-  while (size > 70) {
-    ctx.font = `700 ${size}px Montserrat, Arial, sans-serif`;
+  while (size > 60) {
+    ctx.font = `700 ${size}px Montserrat`;
     if (ctx.measureText(text).width <= maxWidth) break;
     size -= 2;
   }
