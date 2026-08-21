@@ -21,21 +21,26 @@ form.addEventListener("submit", async (event) => {
   event.preventDefault();
   const employeeCode = codeInput.value.trim();
   if (!employeeCode) return;
+
   if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL.includes("PASTE_YOUR")) {
     setMessage("The certificate portal is not connected to the database yet.", "error");
     return;
   }
+
   lookupBtn.disabled = true;
   setMessage("Checking your Employee Code…");
   panel.hidden = true;
+
   try {
     const url = APPS_SCRIPT_URL + "?employeeCode=" + encodeURIComponent(employeeCode);
     const response = await fetch(url);
     const data = await response.json();
+
     if (!data.success) {
       setMessage(data.message || "Certificate not found.", "error");
       return;
     }
+
     currentWinner = data;
     winnerName.textContent = data.name;
     winnerText.textContent = data.prize ? `Winner — ${data.prize}` : "Certificate of Achievement";
@@ -60,27 +65,31 @@ function loadImage(image) {
 
 async function drawCertificate(data) {
   await loadImage(template);
+
   const ctx = canvas.getContext("2d");
   canvas.width = template.naturalWidth;
   canvas.height = template.naturalHeight;
   ctx.drawImage(template, 0, 0);
 
-  // Large, centered name placed immediately above the decorative dotted line.
-  // The supplied template is 2000 x 1414 px; the dotted line is around y=830.
+  // Employee name: large, bold, centered and positioned close above the dotted line.
+  // Certificate template: 2000 x 1414 px. Dotted line is approximately y=830.
   const x = canvas.width / 2;
-  const y = 755;
-  const maxWidth = canvas.width * 0.82;
+  const y = 770;
+  const maxWidth = canvas.width * 0.84;
 
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillStyle = "#28469a";
-  fitText(ctx, data.name, maxWidth, 86);
+
+  // Start at 110px so the name is clearly prominent.
+  fitText(ctx, data.name, maxWidth, 110);
   ctx.fillText(data.name, x, y);
 }
 
 function fitText(ctx, text, maxWidth, fontSize) {
   let size = fontSize;
-  while (size > 44) {
+
+  while (size > 52) {
     ctx.font = `bold ${size}px Arial`;
     if (ctx.measureText(text).width <= maxWidth) break;
     size -= 2;
@@ -89,9 +98,19 @@ function fitText(ctx, text, maxWidth, fontSize) {
 
 downloadBtn.addEventListener("click", () => {
   if (!currentWinner) return;
+
   const { jsPDF } = window.jspdf;
-  const safeName = currentWinner.name.replace(/[^a-z0-9]+/gi, "_").replace(/^_|_$/g, "") || "Winner";
-  const pdf = new jsPDF({orientation:"landscape",unit:"mm",format:"a4",compress:true});
+  const safeName = currentWinner.name
+    .replace(/[^a-z0-9]+/gi, "_")
+    .replace(/^_|_$/g, "") || "Winner";
+
+  const pdf = new jsPDF({
+    orientation: "landscape",
+    unit: "mm",
+    format: "a4",
+    compress: true
+  });
+
   const pageW = pdf.internal.pageSize.getWidth();
   const pageH = pdf.internal.pageSize.getHeight();
   const ratio = Math.min(pageW / canvas.width, pageH / canvas.height);
@@ -99,6 +118,17 @@ downloadBtn.addEventListener("click", () => {
   const h = canvas.height * ratio;
   const x = (pageW - w) / 2;
   const y = (pageH - h) / 2;
-  pdf.addImage(canvas.toDataURL("image/png"), "PNG", x, y, w, h, undefined, "FAST");
+
+  pdf.addImage(
+    canvas.toDataURL("image/png"),
+    "PNG",
+    x,
+    y,
+    w,
+    h,
+    undefined,
+    "FAST"
+  );
+
   pdf.save(`Financial_Azadi_Certificate_${safeName}.pdf`);
 });
