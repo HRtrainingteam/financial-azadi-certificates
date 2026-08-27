@@ -13,20 +13,10 @@ template.src = "assets/certificate-template.png";
 
 let currentWinner = null;
 
-
-/* ================================
-   MESSAGE
-================================ */
-
 function setMessage(text, type = "") {
     message.textContent = text;
     message.className = "message " + type;
 }
-
-
-/* ================================
-   JSONP LOOKUP
-================================ */
 
 function lookupEmployee(employeeCode) {
 
@@ -38,34 +28,16 @@ function lookupEmployee(employeeCode) {
         const script =
             document.createElement("script");
 
-        let finished = false;
-
-        const timeout =
-            setTimeout(() => {
-
-                if (finished) return;
-
-                finished = true;
-
-                cleanup();
-
-                reject(
-                    new Error(
-                        "Unable to connect to the certificate server."
-                    )
-                );
-
-            }, 15000);
-
+        const timeout = setTimeout(() => {
+            cleanup();
+            reject(new Error("Unable to connect to certificate server."));
+        }, 15000);
 
         function cleanup() {
-
             clearTimeout(timeout);
 
-            try {
+            if (window[callbackName]) {
                 delete window[callbackName];
-            } catch (error) {
-                window[callbackName] = undefined;
             }
 
             if (script.parentNode) {
@@ -73,235 +45,141 @@ function lookupEmployee(employeeCode) {
             }
         }
 
-
         window[callbackName] = function(data) {
-
-            if (finished) return;
-
-            finished = true;
-
             cleanup();
-
             resolve(data);
-
         };
-
 
         script.onerror = function() {
-
-            if (finished) return;
-
-            finished = true;
-
             cleanup();
-
-            reject(
-                new Error(
-                    "Unable to reach the certificate server."
-                )
-            );
-
+            reject(new Error("Unable to reach certificate server."));
         };
 
-
-        const requestUrl =
+        script.src =
             APPS_SCRIPT_URL +
             "?employeeCode=" +
             encodeURIComponent(employeeCode) +
             "&callback=" +
-            encodeURIComponent(callbackName) +
-            "&cache=" +
+            callbackName +
+            "&t=" +
             Date.now();
 
+        document.body.appendChild(script);
+    });
+}
 
-        script.src = requestUrl;
 
-        document.head.appendChild(script);
+form.addEventListener("submit", async function(event) {
+
+    event.preventDefault();
+
+    const employeeCode =
+        codeInput.value.trim();
+
+    if (!employeeCode) {
+        setMessage("Please enter your Employee Code.", "error");
+        return;
+    }
+
+    lookupBtn.disabled = true;
+    panel.hidden = true;
+
+    setMessage("Checking your Employee Code...");
+
+    try {
+
+        const data =
+            await lookupEmployee(employeeCode);
+
+        if (!data.success) {
+
+            setMessage(
+                data.message || "Certificate not found.",
+                "error"
+            );
+
+            return;
+        }
+
+        currentWinner = data;
+
+        winnerName.textContent = data.name;
+
+        winnerText.textContent =
+            data.prize
+                ? `Winner — ${data.prize}`
+                : "Certificate of Achievement";
+
+        await drawCertificate(data);
+
+        panel.hidden = false;
+
+        setMessage(
+            "Certificate found successfully.",
+            "success"
+        );
+
+    } catch (error) {
+
+        console.error(error);
+
+        setMessage(
+            error.message,
+            "error"
+        );
+
+    } finally {
+
+        lookupBtn.disabled = false;
+
+    }
+
+});
+
+
+function loadImage(image) {
+
+    return new Promise((resolve, reject) => {
+
+        if (
+            image.complete &&
+            image.naturalWidth
+        ) {
+
+            resolve(image);
+            return;
+        }
+
+        image.onload = () => resolve(image);
+
+        image.onerror = () =>
+            reject(
+                new Error(
+                    "Certificate template could not be loaded."
+                )
+            );
 
     });
 
 }
 
 
-/* ================================
-   FORM
-================================ */
-
-form.addEventListener(
-    "submit",
-    async function(event) {
-
-        event.preventDefault();
-
-        const employeeCode =
-            codeInput.value.trim();
-
-
-        if (!employeeCode) {
-
-            setMessage(
-                "Please enter your Employee Code.",
-                "error"
-            );
-
-            return;
-        }
-
-
-        if (
-            !APPS_SCRIPT_URL ||
-            APPS_SCRIPT_URL.includes("PASTE_YOUR")
-        ) {
-
-            setMessage(
-                "Certificate portal is not connected.",
-                "error"
-            );
-
-            return;
-        }
-
-
-        lookupBtn.disabled = true;
-
-        panel.hidden = true;
-
-        setMessage(
-            "Checking your Employee Code..."
-        );
-
-
-        try {
-
-            const data =
-                await lookupEmployee(
-                    employeeCode
-                );
-
-
-            if (!data.success) {
-
-                setMessage(
-                    data.message ||
-                    "No certificate found.",
-                    "error"
-                );
-
-                return;
-            }
-
-
-            currentWinner = data;
-
-
-            winnerName.textContent =
-                data.name;
-
-
-            winnerText.textContent =
-                data.prize
-                    ? `Winner — ${data.prize}`
-                    : "Certificate of Achievement";
-
-
-            await drawCertificate(data);
-
-
-            panel.hidden = false;
-
-
-            setMessage(
-                "Certificate found successfully.",
-                "success"
-            );
-
-
-        } catch (error) {
-
-            console.error(error);
-
-            setMessage(
-                error.message ||
-                "Unable to connect right now.",
-                "error"
-            );
-
-        } finally {
-
-            lookupBtn.disabled = false;
-
-        }
-
-    }
-);
-
-
-/* ================================
-   IMAGE LOADER
-================================ */
-
-function loadImage(image) {
-
-    return new Promise(
-        (resolve, reject) => {
-
-            if (
-                image.complete &&
-                image.naturalWidth
-            ) {
-
-                resolve(image);
-
-                return;
-            }
-
-
-            image.onload =
-                () => resolve(image);
-
-
-            image.onerror =
-                () =>
-                    reject(
-                        new Error(
-                            "Certificate template could not be loaded."
-                        )
-                    );
-
-        }
-    );
-
-}
-
-
-/* ================================
-   CERTIFICATE
-================================ */
-
 async function drawCertificate(data) {
 
     await loadImage(template);
 
-
-    /* Wait for Montserrat */
     await document.fonts.load(
         "700 130px Montserrat"
     );
 
-
     const ctx =
         canvas.getContext("2d");
-
 
     canvas.width =
         template.naturalWidth;
 
-
     canvas.height =
         template.naturalHeight;
-
-
-    /* Draw the original template */
 
     ctx.drawImage(
         template,
@@ -311,26 +189,22 @@ async function drawCertificate(data) {
 
 
     /*
-       NAME SETTINGS
-
-       Template:
-       2000 x 1414 px
-
-       Name is centered and placed
-       safely above the dotted line.
+        Employee name
+        ----------------
+        Centered
+        Montserrat
+        Large
+        Above dotted line
     */
 
-    const centerX =
+    const x =
         canvas.width / 2;
 
-
-    const nameY =
+    const y =
         735;
-
 
     const maxWidth =
         canvas.width * 0.78;
-
 
     const startingSize =
         130;
@@ -339,10 +213,8 @@ async function drawCertificate(data) {
     ctx.textAlign =
         "center";
 
-
     ctx.textBaseline =
         "middle";
-
 
     ctx.fillStyle =
         "#28469a";
@@ -358,16 +230,12 @@ async function drawCertificate(data) {
 
     ctx.fillText(
         data.name,
-        centerX,
-        nameY
+        x,
+        y
     );
 
 }
 
-
-/* ================================
-   FIT NAME
-================================ */
 
 function fitText(
     ctx,
@@ -379,22 +247,17 @@ function fitText(
     let size =
         startingSize;
 
-
     while (size > 60) {
 
         ctx.font =
             `700 ${size}px Montserrat`;
 
-
         if (
             ctx.measureText(text).width
             <= maxWidth
         ) {
-
             break;
-
         }
-
 
         size -= 2;
 
@@ -402,10 +265,6 @@ function fitText(
 
 }
 
-
-/* ================================
-   DOWNLOAD PDF
-================================ */
 
 downloadBtn.addEventListener(
     "click",
@@ -415,10 +274,8 @@ downloadBtn.addEventListener(
             return;
         }
 
-
         const { jsPDF } =
             window.jspdf;
-
 
         const safeName =
             currentWinner.name
@@ -432,32 +289,21 @@ downloadBtn.addEventListener(
                 ) ||
             "Winner";
 
-
         const pdf =
             new jsPDF({
 
-                orientation:
-                    "landscape",
-
-                unit:
-                    "mm",
-
-                format:
-                    "a4",
-
-                compress:
-                    true
+                orientation: "landscape",
+                unit: "mm",
+                format: "a4",
+                compress: true
 
             });
-
 
         const pageWidth =
             pdf.internal.pageSize.getWidth();
 
-
         const pageHeight =
             pdf.internal.pageSize.getHeight();
-
 
         const scale =
             Math.min(
@@ -465,43 +311,28 @@ downloadBtn.addEventListener(
                 pageHeight / canvas.height
             );
 
-
         const width =
             canvas.width * scale;
-
 
         const height =
             canvas.height * scale;
 
-
         const x =
             (pageWidth - width) / 2;
-
 
         const y =
             (pageHeight - height) / 2;
 
-
         pdf.addImage(
-
-            canvas.toDataURL(
-                "image/png"
-            ),
-
+            canvas.toDataURL("image/png"),
             "PNG",
-
             x,
             y,
-
             width,
             height,
-
             undefined,
-
             "FAST"
-
         );
-
 
         pdf.save(
             `Financial_Azadi_Certificate_${safeName}.pdf`
