@@ -14,329 +14,147 @@ template.src = "Asset/certificate-template.png";
 let currentWinner = null;
 
 function setMessage(text, type = "") {
-    message.textContent = text;
-    message.className = "message " + type;
+  message.textContent = text;
+  message.className = "message " + type;
 }
-
-function lookupEmployee(employeeCode) {
-
-    return new Promise((resolve, reject) => {
-
-        const callbackName =
-            "certificateCallback_" + Date.now();
-
-        const script =
-            document.createElement("script");
-
-        const timeout = setTimeout(() => {
-            cleanup();
-            reject(new Error("Unable to connect to certificate server."));
-        }, 15000);
-
-        function cleanup() {
-            clearTimeout(timeout);
-
-            if (window[callbackName]) {
-                delete window[callbackName];
-            }
-
-            if (script.parentNode) {
-                script.parentNode.removeChild(script);
-            }
-        }
-
-        window[callbackName] = function(data) {
-            cleanup();
-            resolve(data);
-        };
-
-        script.onerror = function() {
-            cleanup();
-            reject(new Error("Unable to reach certificate server."));
-        };
-
-        script.src =
-            APPS_SCRIPT_URL +
-            "?employeeCode=" +
-            encodeURIComponent(employeeCode) +
-            "&callback=" +
-            callbackName +
-            "&t=" +
-            Date.now();
-
-        document.body.appendChild(script);
-    });
-}
-
-
-form.addEventListener("submit", async function(event) {
-
-    event.preventDefault();
-
-    const employeeCode =
-        codeInput.value.trim();
-
-    if (!employeeCode) {
-        setMessage("Please enter your Employee Code.", "error");
-        return;
-    }
-
-    lookupBtn.disabled = true;
-    panel.hidden = true;
-
-    setMessage("Checking your Employee Code...");
-
-    try {
-
-        const data =
-            await lookupEmployee(employeeCode);
-
-        if (!data.success) {
-
-            setMessage(
-                data.message || "Certificate not found.",
-                "error"
-            );
-
-            return;
-        }
-
-        currentWinner = data;
-
-        winnerName.textContent = data.name;
-
-        winnerText.textContent =
-            data.prize
-                ? `Winner — ${data.prize}`
-                : "Certificate of Achievement";
-
-        await drawCertificate(data);
-
-        panel.hidden = false;
-
-        setMessage(
-            "Certificate found successfully.",
-            "success"
-        );
-
-    } catch (error) {
-
-        console.error(error);
-
-        setMessage(
-            error.message,
-            "error"
-        );
-
-    } finally {
-
-        lookupBtn.disabled = false;
-
-    }
-
-});
-
 
 function loadImage(image) {
-
-    return new Promise((resolve, reject) => {
-
-        if (
-            image.complete &&
-            image.naturalWidth
-        ) {
-
-            resolve(image);
-            return;
-        }
-
-        image.onload = () => resolve(image);
-
-        image.onerror = () =>
-            reject(
-                new Error(
-                    "Certificate template could not be loaded."
-                )
-            );
-
-    });
-
+  return new Promise((resolve, reject) => {
+    if (image.complete && image.naturalWidth) {
+      resolve(image);
+      return;
+    }
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("Certificate template could not be loaded."));
+  });
 }
 
+function findEmployee(employeeCode) {
+  const code = String(employeeCode || "").trim().toUpperCase();
+  return CERTIFICATE_LOOKUP[code] || null;
+}
+
+form.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  const employeeCode = codeInput.value.trim();
+
+  if (!employeeCode) {
+    setMessage("Please enter your Employee Code.", "error");
+    return;
+  }
+
+  lookupBtn.disabled = true;
+  panel.hidden = true;
+  setMessage("Checking your Employee Code...");
+
+  try {
+    // Lookup is now completely local. No Google Apps Script request is needed.
+    const data = findEmployee(employeeCode);
+
+    if (!data) {
+      setMessage("No certificate was found for this Employee Code.", "error");
+      return;
+    }
+
+    currentWinner = data;
+
+    winnerName.textContent = data.name;
+    winnerText.textContent = data.prize
+      ? `Winner — ${data.prize}`
+      : "Certificate of Achievement";
+
+    await drawCertificate(data);
+
+    panel.hidden = false;
+    setMessage("Certificate found successfully.", "success");
+  } catch (error) {
+    console.error(error);
+    setMessage(error.message || "Unable to load your certificate.", "error");
+  } finally {
+    lookupBtn.disabled = false;
+  }
+});
 
 async function drawCertificate(data) {
+  await loadImage(template);
 
-    await loadImage(template);
+  // Wait for the actual Montserrat font before measuring the name.
+  await document.fonts.load("700 130px Montserrat");
 
-    await document.fonts.load(
-        "700 130px Montserrat"
-    );
+  const ctx = canvas.getContext("2d");
 
-    const ctx =
-        canvas.getContext("2d");
+  canvas.width = template.naturalWidth;
+  canvas.height = template.naturalHeight;
 
-    canvas.width =
-        template.naturalWidth;
+  ctx.drawImage(template, 0, 0);
 
-    canvas.height =
-        template.naturalHeight;
+  // Large, centered name positioned above the dotted divider.
+  const centerX = canvas.width / 2;
+  const nameY = 735;
+  const maxWidth = canvas.width * 0.78;
+  const startingSize = 130;
 
-    ctx.drawImage(
-        template,
-        0,
-        0
-    );
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = "#28469a";
 
-
-    /*
-        Employee name
-        ----------------
-        Centered
-        Montserrat
-        Large
-        Above dotted line
-    */
-
-    const x =
-        canvas.width / 2;
-
-    const y =
-        735;
-
-    const maxWidth =
-        canvas.width * 0.78;
-
-    const startingSize =
-        130;
-
-
-    ctx.textAlign =
-        "center";
-
-    ctx.textBaseline =
-        "middle";
-
-    ctx.fillStyle =
-        "#28469a";
-
-
-    fitText(
-        ctx,
-        data.name,
-        maxWidth,
-        startingSize
-    );
-
-
-    ctx.fillText(
-        data.name,
-        x,
-        y
-    );
-
+  fitText(ctx, data.name, maxWidth, startingSize);
+  ctx.fillText(data.name, centerX, nameY);
 }
 
+function fitText(ctx, text, maxWidth, startingSize) {
+  let size = startingSize;
 
-function fitText(
-    ctx,
-    text,
-    maxWidth,
-    startingSize
-) {
-
-    let size =
-        startingSize;
-
-    while (size > 60) {
-
-        ctx.font =
-            `700 ${size}px Montserrat`;
-
-        if (
-            ctx.measureText(text).width
-            <= maxWidth
-        ) {
-            break;
-        }
-
-        size -= 2;
-
+  while (size > 60) {
+    ctx.font = `700 ${size}px Montserrat`;
+    if (ctx.measureText(text).width <= maxWidth) {
+      break;
     }
-
+    size -= 2;
+  }
 }
 
+downloadBtn.addEventListener("click", () => {
+  if (!currentWinner) return;
 
-downloadBtn.addEventListener(
-    "click",
-    function() {
+  const { jsPDF } = window.jspdf;
 
-        if (!currentWinner) {
-            return;
-        }
+  const safeName = currentWinner.name
+    .replace(/[^a-z0-9]+/gi, "_")
+    .replace(/^_|_$/g, "") || "Winner";
 
-        const { jsPDF } =
-            window.jspdf;
+  const pdf = new jsPDF({
+    orientation: "landscape",
+    unit: "mm",
+    format: "a4",
+    compress: true
+  });
 
-        const safeName =
-            currentWinner.name
-                .replace(
-                    /[^a-z0-9]+/gi,
-                    "_"
-                )
-                .replace(
-                    /^_|_$/g,
-                    ""
-                ) ||
-            "Winner";
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
 
-        const pdf =
-            new jsPDF({
+  const scale = Math.min(
+    pageWidth / canvas.width,
+    pageHeight / canvas.height
+  );
 
-                orientation: "landscape",
-                unit: "mm",
-                format: "a4",
-                compress: true
+  const width = canvas.width * scale;
+  const height = canvas.height * scale;
 
-            });
+  const x = (pageWidth - width) / 2;
+  const y = (pageHeight - height) / 2;
 
-        const pageWidth =
-            pdf.internal.pageSize.getWidth();
+  pdf.addImage(
+    canvas.toDataURL("image/png"),
+    "PNG",
+    x,
+    y,
+    width,
+    height,
+    undefined,
+    "FAST"
+  );
 
-        const pageHeight =
-            pdf.internal.pageSize.getHeight();
-
-        const scale =
-            Math.min(
-                pageWidth / canvas.width,
-                pageHeight / canvas.height
-            );
-
-        const width =
-            canvas.width * scale;
-
-        const height =
-            canvas.height * scale;
-
-        const x =
-            (pageWidth - width) / 2;
-
-        const y =
-            (pageHeight - height) / 2;
-
-        pdf.addImage(
-            canvas.toDataURL("image/png"),
-            "PNG",
-            x,
-            y,
-            width,
-            height,
-            undefined,
-            "FAST"
-        );
-
-        pdf.save(
-            `Financial_Azadi_Certificate_${safeName}.pdf`
-        );
-
-    }
-);
+  pdf.save(`Financial_Azadi_Certificate_${safeName}.pdf`);
+});
