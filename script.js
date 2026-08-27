@@ -9,7 +9,7 @@ const canvas = document.getElementById("certificateCanvas");
 const downloadBtn = document.getElementById("downloadBtn");
 
 const template = new Image();
-template.src = "assets/certificate-template.png";
+template.src = "Asset/certificate-template.png";
 
 let currentWinner = null;
 
