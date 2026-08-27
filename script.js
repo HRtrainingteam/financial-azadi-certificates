@@ -8,153 +8,332 @@ const winnerText = document.getElementById("winnerText");
 const canvas = document.getElementById("certificateCanvas");
 const downloadBtn = document.getElementById("downloadBtn");
 
-const template = new Image();
-template.src = "Asset/certificate-template.png";
+const achievementTemplate = new Image();
+achievementTemplate.src = "Asset/certificate-template.png";
 
-let currentWinner = null;
+const participationTemplate = new Image();
+participationTemplate.src = "Asset/participation-template.png";
+
+let currentPerson = null;
+
 
 function setMessage(text, type = "") {
   message.textContent = text;
   message.className = "message " + type;
 }
 
-function loadImage(image) {
-  return new Promise((resolve, reject) => {
-    if (image.complete && image.naturalWidth) {
-      resolve(image);
-      return;
-    }
-    image.onload = () => resolve(image);
-    image.onerror = () => reject(new Error("Certificate template could not be loaded."));
-  });
+
+function normalizeCode(value) {
+  return String(value || "").trim().toUpperCase();
 }
 
-function findEmployee(employeeCode) {
-  const code = String(employeeCode || "").trim().toUpperCase();
-  return CERTIFICATE_LOOKUP[code] || null;
+
+function findPerson(employeeCode) {
+
+  const code = normalizeCode(employeeCode);
+
+  return CERTIFICATE_DATA.find(
+    person => normalizeCode(person.employeeCode) === code
+  );
 }
+
 
 form.addEventListener("submit", async (event) => {
+
   event.preventDefault();
 
   const employeeCode = codeInput.value.trim();
 
   if (!employeeCode) {
-    setMessage("Please enter your Employee Code.", "error");
+    setMessage(
+      "Please enter your Employee Code.",
+      "error"
+    );
     return;
   }
 
   lookupBtn.disabled = true;
   panel.hidden = true;
-  setMessage("Checking your Employee Code...");
+
+  setMessage(
+    "Checking your Employee Code..."
+  );
 
   try {
-    // Lookup is now completely local. No Google Apps Script request is needed.
-    const data = findEmployee(employeeCode);
 
-    if (!data) {
-      setMessage("No certificate was found for this Employee Code.", "error");
+    const person = findPerson(employeeCode);
+
+    if (!person) {
+
+      setMessage(
+        "No certificate was found for this Employee Code.",
+        "error"
+      );
+
       return;
     }
 
-    currentWinner = data;
+    currentPerson = person;
 
-    winnerName.textContent = data.name;
-    winnerText.textContent = data.prize
-      ? `Winner — ${data.prize}`
-      : "Certificate of Achievement";
+    winnerName.textContent = person.name;
 
-    await drawCertificate(data);
+    if (person.marks === 8) {
+
+      winnerText.textContent =
+        person.prize
+          ? `Winner — ${person.prize}`
+          : "Certificate of Achievement";
+
+    } else {
+
+      winnerText.textContent =
+        "Certificate of Participation";
+
+    }
+
+    await drawCertificate(person);
 
     panel.hidden = false;
-    setMessage("Certificate found successfully.", "success");
+
+    setMessage(
+      "Certificate found successfully.",
+      "success"
+    );
+
   } catch (error) {
+
     console.error(error);
-    setMessage(error.message || "Unable to load your certificate.", "error");
+
+    setMessage(
+      "Unable to generate the certificate. Please try again.",
+      "error"
+    );
+
   } finally {
+
     lookupBtn.disabled = false;
+
   }
+
 });
 
-async function drawCertificate(data) {
-  await loadImage(template);
 
-  // Wait for the actual Montserrat font before measuring the name.
-  await document.fonts.load("700 130px Montserrat");
+function loadImage(image) {
 
-  const ctx = canvas.getContext("2d");
+  return new Promise((resolve, reject) => {
 
-  canvas.width = template.naturalWidth;
-  canvas.height = template.naturalHeight;
+    if (
+      image.complete &&
+      image.naturalWidth
+    ) {
 
-  ctx.drawImage(template, 0, 0);
+      resolve(image);
+      return;
 
-  // Large, centered name positioned above the dotted divider.
-  const centerX = canvas.width / 2;
-  const nameY = 735;
-  const maxWidth = canvas.width * 0.78;
-  const startingSize = 130;
-
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillStyle = "#28469a";
-
-  fitText(ctx, data.name, maxWidth, startingSize);
-  ctx.fillText(data.name, centerX, nameY);
-}
-
-function fitText(ctx, text, maxWidth, startingSize) {
-  let size = startingSize;
-
-  while (size > 60) {
-    ctx.font = `700 ${size}px Montserrat`;
-    if (ctx.measureText(text).width <= maxWidth) {
-      break;
     }
-    size -= 2;
-  }
-}
 
-downloadBtn.addEventListener("click", () => {
-  if (!currentWinner) return;
+    image.onload = () => resolve(image);
 
-  const { jsPDF } = window.jspdf;
+    image.onerror = () =>
+      reject(
+        new Error(
+          "Certificate template could not be loaded."
+        )
+      );
 
-  const safeName = currentWinner.name
-    .replace(/[^a-z0-9]+/gi, "_")
-    .replace(/^_|_$/g, "") || "Winner";
-
-  const pdf = new jsPDF({
-    orientation: "landscape",
-    unit: "mm",
-    format: "a4",
-    compress: true
   });
 
-  const pageWidth = pdf.internal.pageSize.getWidth();
-  const pageHeight = pdf.internal.pageSize.getHeight();
+}
 
-  const scale = Math.min(
-    pageWidth / canvas.width,
-    pageHeight / canvas.height
+
+async function drawCertificate(person) {
+
+  const isAchievement =
+    Number(person.marks) === 8;
+
+  const template =
+    isAchievement
+      ? achievementTemplate
+      : participationTemplate;
+
+  await loadImage(template);
+
+  await document.fonts.load(
+    "700 130px Montserrat"
   );
 
-  const width = canvas.width * scale;
-  const height = canvas.height * scale;
+  const ctx =
+    canvas.getContext("2d");
 
-  const x = (pageWidth - width) / 2;
-  const y = (pageHeight - height) / 2;
+  canvas.width =
+    template.naturalWidth;
 
-  pdf.addImage(
-    canvas.toDataURL("image/png"),
-    "PNG",
-    x,
-    y,
-    width,
-    height,
-    undefined,
-    "FAST"
+  canvas.height =
+    template.naturalHeight;
+
+  ctx.clearRect(
+    0,
+    0,
+    canvas.width,
+    canvas.height
   );
 
-  pdf.save(`Financial_Azadi_Certificate_${safeName}.pdf`);
-});
+  ctx.drawImage(
+    template,
+    0,
+    0
+  );
+
+
+  /*
+    Both supplied certificate templates use
+    the same 2000 x 1414 layout.
+
+    Name:
+    - Montserrat Bold
+    - centered
+    - comfortably above dotted divider
+  */
+
+  const centerX =
+    canvas.width / 2;
+
+  const nameY =
+    735;
+
+  const maxWidth =
+    canvas.width * 0.78;
+
+  const startingSize =
+    130;
+
+  ctx.textAlign =
+    "center";
+
+  ctx.textBaseline =
+    "middle";
+
+  ctx.fillStyle =
+    "#28469a";
+
+  fitText(
+    ctx,
+    person.name,
+    maxWidth,
+    startingSize
+  );
+
+  ctx.fillText(
+    person.name,
+    centerX,
+    nameY
+  );
+
+}
+
+
+function fitText(
+  ctx,
+  text,
+  maxWidth,
+  startingSize
+) {
+
+  let size =
+    startingSize;
+
+  while (size > 60) {
+
+    ctx.font =
+      `700 ${size}px Montserrat`;
+
+    if (
+      ctx.measureText(text).width
+      <= maxWidth
+    ) {
+      break;
+    }
+
+    size -= 2;
+
+  }
+
+}
+
+
+downloadBtn.addEventListener(
+  "click",
+  () => {
+
+    if (!currentPerson) {
+      return;
+    }
+
+    const { jsPDF } =
+      window.jspdf;
+
+    const safeName =
+      currentPerson.name
+        .replace(
+          /[^a-z0-9]+/gi,
+          "_"
+        )
+        .replace(
+          /^_|_$/g,
+          ""
+        ) || "Participant";
+
+    const prefix =
+      Number(currentPerson.marks) === 8
+        ? "Achievement"
+        : "Participation";
+
+    const pdf =
+      new jsPDF({
+        orientation:"landscape",
+        unit:"mm",
+        format:"a4",
+        compress:true
+      });
+
+    const pageWidth =
+      pdf.internal.pageSize.getWidth();
+
+    const pageHeight =
+      pdf.internal.pageSize.getHeight();
+
+    const scale =
+      Math.min(
+        pageWidth / canvas.width,
+        pageHeight / canvas.height
+      );
+
+    const width =
+      canvas.width * scale;
+
+    const height =
+      canvas.height * scale;
+
+    const x =
+      (pageWidth - width) / 2;
+
+    const y =
+      (pageHeight - height) / 2;
+
+    pdf.addImage(
+      canvas.toDataURL("image/png"),
+      "PNG",
+      x,
+      y,
+      width,
+      height,
+      undefined,
+      "FAST"
+    );
+
+    pdf.save(
+      `Financial_Azadi_${prefix}_Certificate_${safeName}.pdf`
+    );
+
+  }
+);

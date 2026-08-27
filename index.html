@@ -13,17 +13,30 @@
 </head>
 
 <body>
+
   <main class="page">
+
     <section class="card">
+
       <div class="tricolor-line"></div>
+
       <div class="brand">SMC</div>
 
       <h1>Congratulations!</h1>
-      <p class="subtitle">Financial Azadi Quiz — Certificate Portal</p>
-      <p class="intro">Enter your Employee Code to access your certificate.</p>
+
+      <p class="subtitle">
+        Financial Azadi Quiz — Certificate Portal
+      </p>
+
+      <p class="intro">
+        Enter your Employee Code to access your certificate.
+      </p>
 
       <form id="lookupForm">
-        <label for="employeeCode">Employee Code</label>
+
+        <label for="employeeCode">
+          Employee Code
+        </label>
 
         <input
           id="employeeCode"
@@ -34,39 +47,61 @@
           required
         >
 
-        <button type="submit" id="lookupBtn">
+        <button
+          type="submit"
+          id="lookupBtn"
+        >
           Get My Certificate
         </button>
+
       </form>
 
-      <div id="message" class="message" aria-live="polite"></div>
+      <div
+        id="message"
+        class="message"
+        aria-live="polite"
+      ></div>
 
-      <section id="certificatePanel" class="certificate-panel" hidden>
+
+      <section
+        id="certificatePanel"
+        class="certificate-panel"
+        hidden
+      >
 
         <h2 id="winnerName"></h2>
+
         <p id="winnerText"></p>
 
-        <canvas id="certificateCanvas"></canvas>
+        <canvas
+          id="certificateCanvas"
+        ></canvas>
 
-        <button id="downloadBtn" class="download-btn" type="button">
+        <button
+          id="downloadBtn"
+          class="download-btn"
+          type="button"
+        >
           Download My Certificate
         </button>
 
       </section>
+
 
       <p class="note">
         Your certificate is generated using the official certificate design.
       </p>
 
     </section>
+
   </main>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
-  <!-- Local winner data -->
+  <script
+    src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js">
+  </script>
+
   <script src="data.js?v=1"></script>
-
-  <!-- Certificate logic -->
   <script src="script.js?v=1"></script>
 
 </body>
